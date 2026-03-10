@@ -1,20 +1,41 @@
+import os
 import pickle
 import streamlit as st
 import requests
 from urllib.parse import quote
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import OMDB_API_KEY
+
+# ── API Key: auto-detects local vs Streamlit Cloud ───────────────
+try:
+    from config import OMDB_API_KEY           # ✅ Local
+except ImportError:
+    OMDB_API_KEY = st.secrets["OMDB_API_KEY"] # ✅ Streamlit Cloud
 
 PLACEHOLDER = "https://placehold.co/300x450/1a1a2e/c9a84c?text=No+Poster"
 
-# ── 1. Cache heavy model loading — only runs ONCE per session ──
+# ── Auto-download models if missing (Streamlit Cloud cold start) ─
+# 👇 Replace Antarikshya with your actual GitHub username
+MODEL_URLS = {
+    "movie_list.pkl": "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v1.0/movie_list.pkl",
+    "similarity.pkl": "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v1.0/similarity.pkl",
+}
+
+def download_models():
+    for filename, url in MODEL_URLS.items():
+        if not os.path.exists(filename):
+            with st.spinner(f"Downloading {filename}… (first run only)"):
+                r = requests.get(url, timeout=60)
+                open(filename, 'wb').write(r.content)
+
+# ── Load models once, stays cached for entire session ────────────
 @st.cache_resource
 def load_models():
-    movies_data   = pickle.load(open('movie_list.pkl', 'rb'))
+    download_models()
+    movies_data     = pickle.load(open('movie_list.pkl', 'rb'))
     similarity_data = pickle.load(open('similarity.pkl', 'rb'))
     return movies_data, similarity_data
 
-# ── 2. Cache poster per title — never fetches same movie twice ─
+# ── Fetch poster — 4 fallback strategies, cached 1hr ─────────────
 @st.cache_data(ttl=3600)
 def fetch_poster(movie_title):
     # Strategy 1: OMDb direct title
@@ -69,7 +90,7 @@ def fetch_poster(movie_title):
     return PLACEHOLDER
 
 
-# ── 3. Fetch all 5 posters IN PARALLEL ────────────────────────
+# ── Fetch all 5 posters in parallel ──────────────────────────────
 def fetch_posters_parallel(titles):
     posters = [""] * len(titles)
     with ThreadPoolExecutor(max_workers=5) as executor:
@@ -93,37 +114,26 @@ def recommend(movie, movies, similarity):
         key=lambda x: x[1],
         reverse=True
     )
-    titles = [movies.iloc[i[0]].title for i in distances[1:6]]
-
-    # ── Fetch all posters simultaneously ──────────────────────
+    titles  = [movies.iloc[i[0]].title for i in distances[1:6]]
     posters = fetch_posters_parallel(titles)
     return titles, posters
 
 
-# ── Streamlit UI ──────────────────────────────────────────────
-st.header('Movie Recommender System')
+# ── Streamlit UI ──────────────────────────────────────────────────
+st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="wide")
+st.header("🎬 Movie Recommender System")
 
-# Models load once and stay cached
 movies, similarity = load_models()
 
 movie_list     = movies['title'].values
-selected_movie = st.selectbox(
-    "Type or select a movie from the dropdown",
-    movie_list
-)
+selected_movie = st.selectbox("Type or select a movie from the dropdown", movie_list)
 
-if st.button('Show Recommendation'):
-    with st.spinner('Finding recommendations…'):
-        recommended_movie_names, recommended_movie_posters = recommend(
-            selected_movie, movies, similarity
-        )
+if st.button("Show Recommendation"):
+    with st.spinner("Finding recommendations…"):
+        names, posters = recommend(selected_movie, movies, similarity)
 
     col1, col2, col3, col4, col5 = st.columns(5)
-    for col, name, poster in zip(
-        [col1, col2, col3, col4, col5],
-        recommended_movie_names,
-        recommended_movie_posters
-    ):
+    for col, name, poster in zip([col1, col2, col3, col4, col5], names, posters):
         with col:
             st.text(name)
             st.image(poster)
