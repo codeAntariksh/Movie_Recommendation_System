@@ -34,13 +34,12 @@ def load_models():
     similarity_data = pickle.load(open('similarity.pkl', 'rb'))
     return movies_data, similarity_data
 
-# ── Fetch poster + metadata together ─────────────────────────────
+# ── Fetch poster + metadata ───────────────────────────────────────
 @st.cache_data(ttl=3600)
 def fetch_movie_info(movie_title, movie_id=None):
-    """Returns dict: poster, rating, genre, year"""
     info = {"poster": PLACEHOLDER, "rating": "", "genre": "", "year": ""}
 
-    # Strategy 1: TMDB by movie_id — poster only
+    # Strategy 1: TMDB — poster
     if movie_id:
         try:
             url  = f"https://api.themoviedb.org/3/movie/{int(movie_id)}?api_key={TMDB_API_KEY}"
@@ -51,7 +50,7 @@ def fetch_movie_info(movie_title, movie_id=None):
         except Exception:
             pass
 
-    # Strategy 2: OMDb — metadata (rating, genre, year) + poster fallback
+    # Strategy 2: OMDb — metadata + poster fallback
     try:
         url  = f"http://www.omdbapi.com/?t={quote(movie_title)}&type=movie&apikey={OMDB_API_KEY}"
         data = requests.get(url, timeout=5).json()
@@ -62,13 +61,12 @@ def fetch_movie_info(movie_title, movie_id=None):
                     info["poster"] = p
             info["rating"] = data.get("imdbRating", "")
             info["year"]   = data.get("Year", "")
-            # Trim genres to first 2 for display
-            genres = data.get("Genre", "")
+            genres         = data.get("Genre", "")
             info["genre"]  = ", ".join(genres.split(", ")[:2]) if genres else ""
     except Exception:
         pass
 
-    # Strategy 3: Wikipedia poster fallback
+    # Strategy 3: Wikipedia — poster fallback
     if info["poster"] == PLACEHOLDER:
         try:
             wiki_url = (
@@ -115,7 +113,7 @@ def recommend(movie, movies, similarity):
 
 
 # ══════════════════════════════════════════════════════════════════
-#   STREAMLIT UI
+#   PAGE CONFIG
 # ══════════════════════════════════════════════════════════════════
 st.set_page_config(
     page_title="CineMatch — Movie Recommender",
@@ -126,61 +124,64 @@ st.set_page_config(
 # ── Custom CSS ────────────────────────────────────────────────────
 st.markdown("""
 <style>
-/* ── Google Font ── */
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Syne:wght@400;600;700&display=swap');
 
-/* ── Global ── */
-html, body, [class*="css"] {
-    font-family: 'Syne', sans-serif;
-}
+html, body, [class*="css"] { font-family: 'Syne', sans-serif; }
 
-/* ── Page background ── */
 .stApp {
     background: #0a0a0f;
     background-image:
-        radial-gradient(ellipse at 20% 20%, rgba(201,168,76,0.04) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 80%, rgba(201,168,76,0.03) 0%, transparent 50%);
+        radial-gradient(ellipse at 15% 15%, rgba(201,168,76,0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 85%, rgba(201,168,76,0.03) 0%, transparent 50%);
 }
 
-/* ── Hide Streamlit default chrome ── */
+/* Hide default chrome */
 #MainMenu, footer, header { visibility: hidden; }
-.block-container { padding-top: 2rem; padding-bottom: 4rem; }
+.block-container { padding-top: 2.5rem; padding-bottom: 4rem; max-width: 1200px; }
 
-/* ── Hero title ── */
+/* Hero */
 .hero-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(2.8rem, 5vw, 5rem);
+    font-size: clamp(2.6rem, 5vw, 4.5rem);
     font-weight: 600;
     color: #f0ead8;
     line-height: 1.1;
-    letter-spacing: -0.01em;
-    margin-bottom: 6px;
+    margin-bottom: 32px;
 }
 .hero-title span { color: #c9a84c; font-style: italic; }
-.hero-sub {
-    font-size: 0.72rem;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #4a4558;
-    margin-bottom: 36px;
-}
 
-/* ── Divider ── */
+/* Gold divider */
 .gold-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, #c9a84c44, transparent);
-    margin: 32px 0;
+    background: linear-gradient(90deg, transparent, #c9a84c55, transparent);
+    margin: 28px 0;
 }
 
-/* ── Selectbox label ── */
+/* Section labels */
+.section-label {
+    font-size: 0.62rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #c9a84c;
+    margin-bottom: 8px;
+}
+.section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.3rem, 2.2vw, 1.8rem);
+    font-weight: 400;
+    font-style: italic;
+    color: #f0ead8;
+    margin-bottom: 24px;
+}
+.section-title strong { font-style: normal; font-weight: 600; color: #c9a84c; }
+
+/* Selectbox */
 .stSelectbox label {
     font-size: 0.65rem !important;
     letter-spacing: 2.5px !important;
     text-transform: uppercase !important;
     color: #c9a84c !important;
 }
-
-/* ── Selectbox input ── */
 .stSelectbox > div > div {
     background: #16161f !important;
     border: 1px solid rgba(255,255,255,0.08) !important;
@@ -189,10 +190,10 @@ html, body, [class*="css"] {
 }
 .stSelectbox > div > div:focus-within {
     border-color: rgba(201,168,76,0.4) !important;
-    box-shadow: 0 0 0 2px rgba(201,168,76,0.1) !important;
+    box-shadow: 0 0 0 2px rgba(201,168,76,0.08) !important;
 }
 
-/* ── Button ── */
+/* Button */
 .stButton > button {
     width: 100%;
     background: linear-gradient(135deg, #c9a84c, #a07832) !important;
@@ -205,10 +206,9 @@ html, body, [class*="css"] {
     font-weight: 700 !important;
     letter-spacing: 3px !important;
     text-transform: uppercase !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
     box-shadow: 0 8px 30px rgba(201,168,76,0.2) !important;
     margin-top: 8px !important;
+    transition: all 0.2s !important;
 }
 .stButton > button:hover {
     opacity: 0.88 !important;
@@ -216,131 +216,86 @@ html, body, [class*="css"] {
     box-shadow: 0 14px 40px rgba(201,168,76,0.3) !important;
 }
 
-/* ── Section heading ── */
-.section-label {
-    font-size: 0.62rem;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #c9a84c;
-    margin-bottom: 20px;
-}
-.section-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(1.4rem, 2.5vw, 2rem);
-    font-weight: 400;
-    font-style: italic;
-    color: #f0ead8;
-    margin-bottom: 28px;
-}
-.section-title strong {
-    font-style: normal;
-    font-weight: 600;
-    color: #c9a84c;
+/* Poster image — constrained size */
+[data-testid="stImage"] img {
+    border-radius: 6px 6px 0 0 !important;
+    width: 100% !important;
+    aspect-ratio: 2/3 !important;
+    object-fit: cover !important;
+    display: block !important;
+    transition: transform 0.4s cubic-bezier(.23,1,.32,1) !important;
 }
 
-/* ── Movie card ── */
-.movie-card {
+/* Card wrapper */
+.card-wrap {
     background: #16161f;
     border: 1px solid rgba(255,255,255,0.06);
     border-radius: 6px;
     overflow: hidden;
-    transition: transform 0.3s cubic-bezier(.23,1,.32,1),
-                box-shadow 0.3s ease,
-                border-color 0.3s ease;
-    height: 100%;
+    transition: transform 0.3s cubic-bezier(.23,1,.32,1), box-shadow 0.3s, border-color 0.3s;
+    margin-bottom: 8px;
 }
-.movie-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
-    border-color: rgba(201,168,76,0.25);
+.card-wrap:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    border-color: rgba(201,168,76,0.2);
 }
 
-/* ── Poster ── */
-.poster-wrap {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 2/3;
-    overflow: hidden;
-    background: #0d0d14;
-}
-.poster-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    transition: transform 0.5s cubic-bezier(.23,1,.32,1);
-}
-.movie-card:hover .poster-wrap img {
-    transform: scale(1.06);
-}
-
-/* ── Rating badge ── */
-.rating-badge {
-    position: absolute;
-    top: 10px; right: 10px;
-    background: rgba(10,10,15,0.88);
-    border: 1px solid rgba(201,168,76,0.5);
-    border-radius: 4px;
-    padding: 4px 9px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #c9a84c;
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* ── Card body ── */
-.card-body {
-    padding: 14px 14px 16px;
-}
+/* Card text block */
+.card-info { padding: 10px 12px 12px; }
 .card-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: #f0ead8;
     line-height: 1.3;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.card-year {
+.card-meta {
     font-size: 0.65rem;
-    letter-spacing: 1px;
     color: #4a4558;
-    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    margin-bottom: 7px;
 }
-.card-genres {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-}
-.genre-tag {
-    font-size: 0.6rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 3px 8px;
+.card-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.25);
     border-radius: 100px;
-    border: 1px solid rgba(255,255,255,0.08);
-    color: #6b6575;
-    white-space: nowrap;
+    padding: 2px 9px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #c9a84c;
+    margin-bottom: 7px;
+}
+.card-genres { display: flex; flex-wrap: wrap; gap: 4px; }
+.genre-pill {
+    font-size: 0.58rem;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 100px;
+    border: 1px solid rgba(255,255,255,0.07);
+    color: #5a5468;
 }
 
-/* ── Sidebar ── */
+/* Sidebar */
 [data-testid="stSidebar"] {
     background: #0f0f17 !important;
-    border-right: 1px solid rgba(255,255,255,0.05) !important;
+    border-right: 1px solid rgba(255,255,255,0.04) !important;
 }
-[data-testid="stSidebar"] * { color: #f0ead8 !important; }
-
-/* ── Spinner ── */
-[data-testid="stSpinner"] { color: #c9a84c !important; }
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] div { color: #f0ead8 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Load models ───────────────────────────────────────────────────
+# ── Load ──────────────────────────────────────────────────────────
 movies, similarity = load_models()
 
 # ── Sidebar ───────────────────────────────────────────────────────
@@ -359,10 +314,9 @@ with st.sidebar:
 # ── Hero ──────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero-title">Find your next<br><span>favourite film.</span></div>
-<div class="hero-sub">Content-based · 4,806 movies · Powered by ML</div>
 """, unsafe_allow_html=True)
 
-# ── Search ────────────────────────────────────────────────────────
+# ── Search row ────────────────────────────────────────────────────
 col_select, col_btn = st.columns([4, 1])
 with col_select:
     selected_movie = st.selectbox(
@@ -387,33 +341,32 @@ if search:
     <div class="section-title">Films similar to <strong>{selected_movie}</strong></div>
     """, unsafe_allow_html=True)
 
-    cols = st.columns(5)
+    cols = st.columns(5, gap="medium")
     for col, name, info in zip(cols, names, infos):
         with col:
-            # Build rating badge HTML
-            badge = ""
-            if info["rating"] and info["rating"] != "N/A":
-                badge = f'<div class="rating-badge">★ {info["rating"]}</div>'
+            # Poster via st.image — Streamlit handles column width correctly
+            st.image(info["poster"], use_container_width=True)
 
-            # Build genre tags HTML
+            # Rating
+            rating_html = ""
+            if info["rating"] and info["rating"] != "N/A":
+                rating_html = f'<div class="card-rating">★ {info["rating"]}</div>'
+
+            # Genre pills
             genre_html = ""
             if info["genre"]:
-                tags = "".join(
-                    f'<span class="genre-tag">{g.strip()}</span>'
+                pills = "".join(
+                    f'<span class="genre-pill">{g.strip()}</span>'
                     for g in info["genre"].split(",")
                 )
-                genre_html = f'<div class="card-genres">{tags}</div>'
+                genre_html = f'<div class="card-genres">{pills}</div>'
 
+            # Card info block
             st.markdown(f"""
-            <div class="movie-card">
-                <div class="poster-wrap">
-                    <img src="{info['poster']}" alt="{name}" loading="lazy"/>
-                    {badge}
-                </div>
-                <div class="card-body">
-                    <div class="card-title" title="{name}">{name}</div>
-                    <div class="card-year">{info.get('year','')}</div>
-                    {genre_html}
-                </div>
+            <div class="card-info">
+                <div class="card-title" title="{name}">{name}</div>
+                <div class="card-meta">{info.get("year", "")}</div>
+                {rating_html}
+                {genre_html}
             </div>
             """, unsafe_allow_html=True)
