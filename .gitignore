@@ -1,3 +1,21 @@
+# Secrets — NEVER commit
 config.py
+.streamlit/secrets.toml
+
+# Model files — hosted on GitHub Releases
 *.pkl
+
+# Raw data
+*.csv
+
+# Python
 __pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
