@@ -4,4 +4,3 @@ pandas==2.1.4
 numpy==1.26.4
 scikit-learn==1.4.0
 nltk==3.8.1
-pickle5==0.0.11
