@@ -100,8 +100,10 @@ def fetch_all_parallel(titles, movie_ids):
 
 
 def recommend(movie, movies, similarity):
-    index     = movies[movies['title'] == movie].index[0]
-    distances = sorted(
+    # Use positional index to ensure alignment with similarity matrix
+    movie_list = movies['title'].tolist()
+    index      = movie_list.index(movie)   # 0-based positional, not DataFrame label
+    distances  = sorted(
         enumerate(similarity[index]),
         key=lambda x: x[1], reverse=True
     )
