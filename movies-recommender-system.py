@@ -5,19 +5,20 @@ import requests
 from urllib.parse import quote
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ── API Key: auto-detects local vs Streamlit Cloud ───────────────
+# ── API Keys ──────────────────────────────────────────────────────
 try:
-    from config import OMDB_API_KEY           # ✅ Local
+    from config import OMDB_API_KEY
 except ImportError:
-    OMDB_API_KEY = st.secrets["OMDB_API_KEY"] # ✅ Streamlit Cloud
+    OMDB_API_KEY = st.secrets["OMDB_API_KEY"]
 
-PLACEHOLDER = "https://placehold.co/300x450/1a1a2e/c9a84c?text=No+Poster"
+# Free TMDB API key — works on Streamlit Cloud (US servers)
+TMDB_API_KEY = "8265bd1679663a7ea12ac168da84d2e8"
+PLACEHOLDER  = "https://placehold.co/300x450/0a0a0f/c9a84c?text=No+Poster"
 
-# ── Auto-download models if missing (Streamlit Cloud cold start) ─
-# 👇 Replace Antarikshya with your actual GitHub username
+# ── Auto-download models ──────────────────────────────────────────
 MODEL_URLS = {
-    "movie_list.pkl": "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v1.0/movie_list.pkl",
-    "similarity.pkl": "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v1.0/similarity.pkl",
+    "movie_list.pkl":  "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v1.0/movie_list.pkl",
+    "similarity.pkl":  "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v1.0/similarity.pkl",
 }
 
 def download_models():
@@ -27,7 +28,6 @@ def download_models():
                 r = requests.get(url, timeout=60)
                 open(filename, 'wb').write(r.content)
 
-# ── Load models once, stays cached for entire session ────────────
 @st.cache_resource
 def load_models():
     download_models()
@@ -35,10 +35,22 @@ def load_models():
     similarity_data = pickle.load(open('similarity.pkl', 'rb'))
     return movies_data, similarity_data
 
-# ── Fetch poster — 4 fallback strategies, cached 1hr ─────────────
+# ── Poster fetching — 5 strategies ───────────────────────────────
 @st.cache_data(ttl=3600)
-def fetch_poster(movie_title):
-    # Strategy 1: OMDb direct title
+def fetch_poster(movie_title, movie_id=None):
+
+    # ── Strategy 1: TMDB by movie_id (best quality, works on Cloud) ──
+    if movie_id:
+        try:
+            url  = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}"
+            data = requests.get(url, timeout=6).json()
+            path = data.get("poster_path", "")
+            if path:
+                return f"https://image.tmdb.org/t/p/w500{path}"
+        except Exception:
+            pass
+
+    # ── Strategy 2: OMDb direct title ────────────────────────────────
     try:
         url  = f"http://www.omdbapi.com/?t={quote(movie_title)}&type=movie&apikey={OMDB_API_KEY}"
         data = requests.get(url, timeout=5).json()
@@ -49,7 +61,7 @@ def fetch_poster(movie_title):
     except Exception:
         pass
 
-    # Strategy 2: OMDb search (fuzzy match)
+    # ── Strategy 3: OMDb search (fuzzy) ──────────────────────────────
     try:
         url  = f"http://www.omdbapi.com/?s={quote(movie_title)}&type=movie&apikey={OMDB_API_KEY}"
         data = requests.get(url, timeout=5).json()
@@ -61,7 +73,7 @@ def fetch_poster(movie_title):
     except Exception:
         pass
 
-    # Strategy 3: Wikipedia thumbnail
+    # ── Strategy 4: Wikipedia thumbnail ──────────────────────────────
     try:
         wiki_url = (
             f"https://en.wikipedia.org/api/rest_v1/page/summary/"
@@ -74,10 +86,10 @@ def fetch_poster(movie_title):
     except Exception:
         pass
 
-    # Strategy 4: DuckDuckGo
+    # ── Strategy 5: DuckDuckGo ────────────────────────────────────────
     try:
         ddg_url = (
-            f"https://api.duckduckgo.com/?q={quote(movie_title + ' film')}"
+            f"https://api.duckduckgo.com/?q={quote(movie_title + ' film poster')}"
             f"&format=json&pretty=0&no_html=1&skip_disambig=1"
         )
         data  = requests.get(ddg_url, timeout=5).json()
@@ -90,13 +102,13 @@ def fetch_poster(movie_title):
     return PLACEHOLDER
 
 
-# ── Fetch all 5 posters in parallel ──────────────────────────────
-def fetch_posters_parallel(titles):
+# ── Parallel poster fetching ──────────────────────────────────────
+def fetch_posters_parallel(titles, movie_ids):
     posters = [""] * len(titles)
     with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_index = {
-            executor.submit(fetch_poster, title): i
-            for i, title in enumerate(titles)
+            executor.submit(fetch_poster, title, mid): i
+            for i, (title, mid) in enumerate(zip(titles, movie_ids))
         }
         for future in as_completed(future_to_index):
             i = future_to_index[future]
@@ -114,8 +126,10 @@ def recommend(movie, movies, similarity):
         key=lambda x: x[1],
         reverse=True
     )
-    titles  = [movies.iloc[i[0]].title for i in distances[1:6]]
-    posters = fetch_posters_parallel(titles)
+    top5      = distances[1:6]
+    titles    = [movies.iloc[i[0]].title    for i in top5]
+    movie_ids = [movies.iloc[i[0]].movie_id for i in top5]  # ← pass TMDB IDs
+    posters   = fetch_posters_parallel(titles, movie_ids)
     return titles, posters
 
 
