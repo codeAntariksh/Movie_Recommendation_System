@@ -16,8 +16,8 @@ PLACEHOLDER  = "https://placehold.co/300x450/0a0a0f/c9a84c?text=No+Poster"
 
 # ── Model URLs ────────────────────────────────────────────────────
 MODEL_URLS = {
-    "movie_list.pkl": "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v1.0/movie_list.pkl",
-    "similarity.pkl": "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v1.0/similarity.pkl",
+    "movie_list.pkl": "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v2.0/movie_list.pkl",
+    "similarity.pkl": "https://github.com/codeAntariksh/Movie_Recommendation_System/releases/download/v2.0/similarity.pkl",
 }
 
 def download_models():
