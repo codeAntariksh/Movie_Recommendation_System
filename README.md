@@ -10,8 +10,6 @@
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
-<img src="https://github.com/codeAntariksh/Movie_Recommendation_System/raw/main/assets/demo.png" alt="CineMatch Demo" width="85%" style="border-radius:12px"/>
-
 > Select any movie from a library of **4,806 films** and instantly receive  
 > 5 tailored recommendations with posters, powered by cosine similarity.
 
@@ -72,9 +70,6 @@ Movie_Recommendation_System/
 ├── ⚙️  requirements.txt              # Pinned Python dependencies
 ├── 🔧 setup.sh                       # Streamlit Cloud server config
 ├── 🙈 .gitignore                     # Excludes secrets + model files
-│
-├── 📁 assets/                        # Screenshots for README
-│   └── demo.png
 │
 └── 📄 README.md                      # You are here
 ```
@@ -191,7 +186,6 @@ OMDB_API_KEY = "your_omdb_key_here"
 - [x] Custom CSS cinematic dark UI
 - [x] Cloud deployment on Streamlit Cloud
 - [ ] Expand to 45,000+ movies (MovieLens dataset)
-- [ ] Custom HTML/CSS/JS frontend (Flask backend)
 - [ ] User-based collaborative filtering
 
 ---
