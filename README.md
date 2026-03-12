@@ -24,7 +24,8 @@
 - 🎯 **Content-based filtering** — recommendations based on genres, keywords, cast, crew & plot
 - ⚡ **Parallel poster fetching** — all 5 posters load simultaneously via `ThreadPoolExecutor`
 - 🧠 **Smart caching** — models load once per session; posters cached for 1 hour
-- 🖼️ **Multi-source posters** — TMDB → OMDb → Wikipedia → DuckDuckGo fallback chain
+- 🖼️ **Multi-source posters** — TMDB → OMDb → Wikipedia fallback chain
+- ⭐ **Rich metadata** — IMDb rating + genre tags displayed on every card
 - ☁️ **Cloud deployed** — live on Streamlit Cloud, zero setup for users
 - 🔐 **Secure** — API keys stored in Streamlit Secrets, never in code
 
@@ -35,7 +36,7 @@
 ```
 User selects a movie
         ↓
-Look up movie index in preprocessed DataFrame
+Look up positional index in preprocessed DataFrame
         ↓
 Retrieve precomputed cosine similarity row
         ↓
@@ -43,9 +44,9 @@ Sort all 4,806 movies by similarity score
         ↓
 Return top 5 matches (excluding the query film)
         ↓
-Fetch posters in parallel from TMDB / OMDb / Wikipedia
+Fetch poster + IMDb rating + genre in parallel from TMDB / OMDb / Wikipedia
         ↓
-Display recommendations with posters
+Display recommendation cards with metadata
 ```
 
 ### ML Pipeline
@@ -54,7 +55,7 @@ Display recommendations with posters
 |---|---|---|
 | Text cleaning | Tokenization + Lowercasing | Overview, genres, keywords, cast, crew → single `tags` string |
 | Normalization | Porter Stemmer (NLTK) | `"running"` → `"run"`, `"loved"` → `"love"` |
-| Vectorization | `CountVectorizer` | Top 5,000 features, English stop words removed |
+| Vectorization | `TfidfVectorizer` | Top 5,000 features, English stop words removed |
 | Similarity | Cosine Similarity | `sklearn.metrics.pairwise.cosine_similarity` |
 | Storage | Pickle | Precomputed matrix serialized for instant loading |
 
@@ -106,17 +107,15 @@ pip install -r requirements.txt
 
 Create `config.py` in the project root:
 ```python
-# config.py  ← never commit this file
+# never commit this file
 OMDB_API_KEY = "your_omdb_key_here"
 ```
 
 **4. Download model files**
 
-Either re-run the notebook to regenerate them, or download from [Releases](../../releases/tag/v1.0):
-```bash
-# Place these in the project root:
-# movie_list.pkl
-# similarity.pkl
+Either re-run the notebook to regenerate them, or download from [Releases](../../releases/tag/v2.0):
+```
+Place these in the project root: movie_list.pkl and similarity.pkl
 ```
 
 **5. Launch the app**
@@ -130,17 +129,11 @@ Open → [http://localhost:8501](http://localhost:8501)
 
 ## ☁️ Deploy Your Own Instance
 
-**1. Fork this repo**
+**1. Fork this repo** — click the **Fork** button at the top right.
 
-Click the **Fork** button at the top right.
+**2. Sign in to Streamlit Cloud** — go to [share.streamlit.io](https://share.streamlit.io) and connect your GitHub.
 
-**2. Sign in to Streamlit Cloud**
-
-Go to [share.streamlit.io](https://share.streamlit.io) and connect your GitHub.
-
-**3. Upload model files to GitHub Releases**
-
-Create a release tagged `v1.0` and attach `movie_list.pkl` and `similarity.pkl`.
+**3. Upload model files to GitHub Releases** — create a release tagged `v2.0` and attach both pkl files.
 
 **4. Create a new app on Streamlit Cloud**
 
@@ -151,9 +144,7 @@ Create a release tagged `v1.0` and attach `movie_list.pkl` and `similarity.pkl`.
 | Main file | `movies-recommender-system.py` |
 | Python version | `3.11` |
 
-**5. Add your secret**
-
-Under **Advanced Settings → Secrets**:
+**5. Add your secret** — under **Advanced Settings → Secrets**:
 ```toml
 OMDB_API_KEY = "your_omdb_key_here"
 ```
@@ -167,11 +158,11 @@ OMDB_API_KEY = "your_omdb_key_here"
 | Package | Version | Purpose |
 |---|---|---|
 | `streamlit` | 1.32.0 | Web UI framework |
-| `scikit-learn` | 1.4.0 | CountVectorizer + Cosine Similarity |
+| `scikit-learn` | 1.4.0 | TfidfVectorizer + Cosine Similarity |
 | `pandas` | 2.1.4 | Data manipulation |
 | `numpy` | 1.26.4 | Numerical operations |
 | `nltk` | 3.8.1 | Porter Stemmer |
-| `requests` | 2.31.0 | Poster fetching API calls |
+| `requests` | 2.31.0 | Poster + metadata API calls |
 
 ---
 
@@ -195,8 +186,10 @@ OMDB_API_KEY = "your_omdb_key_here"
 
 ## 🗺️ Roadmap
 
-- [ ] TF-IDF vectorization upgrade (better recommendations)
-- [ ] IMDb rating + genre display on each poster card
+- [x] TF-IDF vectorization upgrade
+- [x] IMDb rating + genre display on each card
+- [x] Custom CSS cinematic dark UI
+- [x] Cloud deployment on Streamlit Cloud
 - [ ] Expand to 45,000+ movies (MovieLens dataset)
 - [ ] Custom HTML/CSS/JS frontend (Flask backend)
 - [ ] User-based collaborative filtering
